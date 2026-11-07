@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  mobileNumber String   @unique
+  password     String
+  role         String   @default("ADMIN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  mobileNumber String   @unique
+  email        String?  @unique
+  password     String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts     Account[]
+}
+
+model Account {
+  id            Int      @id @default(autoincrement())
+  accountNumber String   @unique
+  accountType   String   @default("SAVINGS")
+  balance       Decimal  @default(0.00) @db.Decimal(15, 2)
+  status        String   @default("ACTIVE")
+  customerId    Int
+  customer      Customer @relation(fields: [customerId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  transactionId   String   @unique
+  type            String
+  amount          Decimal  @db.Decimal(15, 2)
+  description     String?
+  status          String   @default("SUCCESS")
+  accountId       Int
+  account         Account  @relation(fields: [accountId], references: [id])
+  createdAt       DateTime @default(now())
+}

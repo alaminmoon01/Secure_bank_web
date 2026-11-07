@@ -1,0 +1,241 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ADMIN
+model Admin {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  username     String?  @unique
+  mobileNumber String   @unique
+  pinHash      String?
+  password     String
+  role         String   @default("ADMIN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdAccounts Account[]
+  reviewedLogins  LoginRequest[] @relation("LoginReviewedBy")
+  reviewedDevices DeviceChangeRequest[] @relation("DeviceReviewedBy")
+  securityLogs    SecurityLog[]
+  supportReviews  SupportRequest[] @relation("SupportReviewedBy")
+}
+
+// CUSTOMER
+model Customer {
+  id           Int      @id @default(autoincrement())
+  firstName    String?
+  lastName     String?
+  fullName     String
+  nid          String?  @unique
+  mobileNumber String   @unique
+  email        String?  @unique
+  password     String?
+  isRegistered Boolean  @default(false)
+  isActive     Boolean  @default(true)
+
+  // LOGIN SECURITY
+  failedLoginAttempts Int      @default(0)
+  isLocked            Boolean  @default(false)
+  lockedAt            DateTime?
+  lockReason          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts        Account[]
+  devices         TrustedDevice[]
+  loginRequests   LoginRequest[]
+  loginAttempts   LoginAttempt[]
+  twoFactorCodes  TwoFactorCode[]
+  securityLogs    SecurityLog[]
+  supportRequests SupportRequest[]
+  deviceChanges   DeviceChangeRequest[]
+}
+
+// BANK ACCOUNT
+model Account {
+  id               Int      @id @default(autoincrement())
+  accountNumber    String   @unique
+  accountType      String   @default("SAVINGS")
+  balance          Decimal  @default(0.00) @db.Decimal(15, 2)
+  status           String   @default("ACTIVE")
+  customerId       Int
+  createdByAdminId Int?
+
+  customer       Customer @relation(fields: [customerId], references: [id])
+  createdByAdmin Admin?   @relation(fields: [createdByAdminId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+// TRANSACTIONS
+model Transaction {
+  id               Int      @id @default(autoincrement())
+  transactionId    String   @unique
+  type             String
+  amount           Decimal  @db.Decimal(15, 2)
+  description      String?
+  recipientAccount String?
+  status           String   @default("SUCCESS")
+  accountId        Int
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// TRUSTED DEVICES
+model TrustedDevice {
+  id                  Int      @id @default(autoincrement())
+  customerId          Int
+  deviceName          String?
+  fingerprintHash     String
+  ipAddress           String?
+  browser             String?
+  operatingSystem     String?
+  approximateLocation String?
+
+  status              String   @default("PENDING")
+  isActive            Boolean  @default(true)
+
+  // DEVICE LOGIN SECURITY
+  failedAttempts Int       @default(0)
+  isLocked       Boolean   @default(false)
+  lockedAt       DateTime?
+
+  customer          Customer @relation(fields: [customerId], references: [id])
+  loginRequests     LoginRequest[]
+  oldDeviceRequests DeviceChangeRequest[] @relation("OldDevice")
+  newDeviceRequests DeviceChangeRequest[] @relation("NewDevice")
+
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  @@unique([customerId, fingerprintHash])
+  @@index([customerId, status])
+}
+
+// LOGIN REQUESTS
+model LoginRequest {
+  id                Int      @id @default(autoincrement())
+  customerId        Int
+  deviceId          Int?
+  status            String   @default("PENDING")
+  reason            String?
+  reviewedByAdminId Int?
+  reviewedAt        DateTime?
+
+  customer   Customer       @relation(fields: [customerId], references: [id])
+  device     TrustedDevice? @relation(fields: [deviceId], references: [id])
+  reviewedBy Admin?         @relation("LoginReviewedBy", fields: [reviewedByAdminId], references: [id])
+
+  twoFactorCodes TwoFactorCode[]
+
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([customerId, status])
+}
+
+// FAILED LOGIN TRACKING
+model LoginAttempt {
+  id               Int      @id @default(autoincrement())
+  customerId       Int?
+  mobileNumber     String
+  ipAddress        String?
+  fingerprintHash  String?
+  success          Boolean  @default(false)
+  reason           String?
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([mobileNumber, createdAt])
+  @@index([customerId, createdAt])
+}
+
+// TWO FACTOR AUTHENTICATION
+model TwoFactorCode {
+  id             Int      @id @default(autoincrement())
+  customerId     Int
+  loginRequestId Int
+  codeHash       String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  attempts       Int      @default(0)
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  loginRequest LoginRequest @relation(fields: [loginRequestId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([loginRequestId, expiresAt])
+}
+
+// SECURITY REPORTS
+model SecurityLog {
+  id          Int      @id @default(autoincrement())
+  customerId  Int?
+  adminId     Int?
+  eventType   String
+  severity    String   @default("INFO")
+  description String
+  ipAddress   String?
+  metadata    Json?
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+  admin    Admin?    @relation(fields: [adminId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([eventType, createdAt])
+}
+
+// CUSTOMER SUPPORT
+model SupportRequest {
+  id                Int      @id @default(autoincrement())
+  customerId        Int
+  category          String
+  description       String
+  status            String   @default("PENDING")
+  reviewedByAdminId Int?
+
+  reviewedBy Admin?   @relation("SupportReviewedBy", fields: [reviewedByAdminId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// DEVICE CHANGE REQUEST
+model DeviceChangeRequest {
+  id                Int      @id @default(autoincrement())
+  customerId        Int
+  oldDeviceId       Int?
+  newDeviceId       Int
+  status            String   @default("PENDING")
+  reason            String?
+  reviewedByAdminId Int?
+
+  reviewedBy Admin?        @relation("DeviceReviewedBy", fields: [reviewedByAdminId], references: [id])
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  oldDevice  TrustedDevice? @relation("OldDevice", fields: [oldDeviceId], references: [id])
+  newDevice  TrustedDevice  @relation("NewDevice", fields: [newDeviceId], references: [id])
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([customerId, status])
+}

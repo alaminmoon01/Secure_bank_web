@@ -1,0 +1,69 @@
+
+.device-card,
+.location-status,
+.device-map {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.device-card h3,
+.location-status h3,
+.device-map h3 {
+  color: #172554;
+  margin-bottom: 16px;
+}
+
+.device-card p,
+.location-status p,
+.device-map p {
+  margin: 10px 0;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.device-card strong,
+.location-status strong {
+  color: #0f172a;
+}
+
+.device-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: 20px 0;
+}
+
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.device-table th,
+.device-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.device-table th {
+  background: #f8fafc;
+  color: #172554;
+}
+
+.device-table td {
+  color: #475569;
+}
+
+.device-map a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.device-map a:hover {
+  text-decoration: underline;
+}
